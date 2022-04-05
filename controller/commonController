@@ -1,0 +1,7 @@
+import {serverResponse} from '../utils'
+
+const commonController = {
+    
+}
+
+export default commonController;
