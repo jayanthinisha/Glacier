@@ -1,0 +1,143 @@
+Glacier Upload:-
+
+1.  From API
+	const yieldPond = await UploadToGlacier(model);
+
+2. In utils.ts
+
+import aws from 'aws-sdk';
+
+aws.config.update({
+    region: region,
+    accessKeyId: accessKeyId,
+    secretAccessKey: secretAccessKey,
+});
+
+// Create a new service object and buffer
+var glacier = new aws.Glacier({ apiVersion: '2012-06-01' });
+
+// No more than 4GB otherwise use multipart upload
+
+export var UploadToGlacier = function (model) {
+
+    var buf = Buffer.from(JSON.stringify(model));
+
+    var params = { vaultName: 'YieldPonds', body: buf };
+
+    return new Promise((resolve, reject) => {
+        glacier.uploadArchive(params, function (err, data) {
+            if (err) {
+                console.log("Error uploading archive!", err); return reject(err)
+            }
+            else {
+                console.log("Archive ID", data.archiveId);
+                return resolve(data)
+            }
+        });
+    });
+}
+
+-------------------------------------------------------------------------------
+AWS CloudShell:- 
+
+Region;- ap-south
+
+4/4 2022:-
+
+1. Initiate Archieve download Job by using archive ID which is get from the response of glacier upload:-
+
+	aws glacier initiate-job --vault-name YieldPonds --account-id 450224237736 --job-parameters '{"Type": "archive-retrieval", "ArchiveId": "Cf93eEVWnchmhUFnzjX-YfNpVap1Y1wlcqIAOelnFrarekxX4ko6VN7dtGbn3KYglv2O7_P26nzf5Q-fZsgxuwOtpc-AaA2uy5Hb5IHp8wpMgyTvg4i5B1Tfatrs1Fp69FX83x6aSg"}'
+
+	Response:-
+		{
+			"location": "/450224237736/vaults/YieldPonds/jobs/941ZaSOCozs4UAKeI1qKdGF2WZe_b5u_MZNlbaY_dfibsbLhJo31nEjpF7xZ86bH4sA7CsPL2hBgW8xy2-Pp8cgpFdYa",
+			"jobId": "941ZaSOCozs4UAKeI1qKdGF2WZe_b5u_MZNlbaY_dfibsbLhJo31nEjpF7xZ86bH4sA7CsPL2hBgW8xy2-Pp8cgpFdYa"
+		}
+		
+
+2. For checking the job status by using Job ID
+
+	aws glacier describe-job --account-id 450224237736 --vault-name YieldPonds --job-id 941ZaSOCozs4UAKeI1qKdGF2WZe_b5u_MZNlbaY_dfibsbLhJo31nEjpF7xZ86bH4sA7CsPL2hBgW8xy2-Pp8cgpFdYa 
+
+3. Once job done, then get the output by using the file name (ex.4thoutput.json)
+
+	aws glacier get-job-output --account-id 450224237736 --vault-name YieldPonds --job-id 941ZaSOCozs4UAKeI1qKdGF2WZe_b5u_MZNlbaY_dfibsbLhJo31nEjpF7xZ86bH4sA7CsPL2hBgW8xy2-Pp8cgpFdYa 4thoutput.json
+
+4. After above command done, using actions dropdown, click download and enter the fine name (ex.4thoutput.json)
+
+
+Glacier output
+{
+    "_id": "624a826a4d002fb263054f13",
+    "pondname": "ab",
+    "pondarea": "12",
+    "culture": "1",
+    "doc": "12",
+    "salinity": "",
+    "totalseed": "",
+    "units": "Acres",
+    "device": "61ef9c4d98ec659145cf0e9a",
+    "imagepath": "https://aqgx-media-files.s3.ap-south-1.amazonaws.com/pond_images/image-1649050200041_image-1644421773462_image-1644401241046_PHOTO-2021-05-08-10-29-27.jpg",
+    "isYield": false,
+    "createdon": "2022-04-04T05:16:21.515Z",
+    "contactdetails": [
+        {
+            "_id": "624a84514d002fb263054f45",
+            "contactnumber": "3234354657",
+            "role": "Technician",
+            "createdon": "2022-04-04T05:38:25.282Z",
+            "pondid": "624a826a4d002fb263054f13",
+            "createdby": "61ce9bad5e840f9b1461dc3c",
+            "__v": 0
+        }
+    ],
+    "devicedetails": {
+        "_id": "61ef9c4d98ec659145cf0e9a",
+        "dlstation": "0405854111395856",
+        "dlname": "dl99",
+        "dlno": 99,
+        "isActive": true,
+        "maxtime": "1970-01-02T05:11:03.360Z",
+        "maxyear": "1970-01-01T00:00:02.022Z"
+    },
+    "livedetails": {
+        "_id": "624450b03c26027c74b418f4",
+        "edgeDevice": "61ef9c4d98ec659145cf0e9a",
+        "latestTime": null,
+        "analogId1": 0,
+        "analogId2": 0,
+        "analogId3": 0,
+        "analogId4": 0,
+        "analogId5": 0,
+        "analogId6": 0,
+        "analogId7": 0,
+        "analogId8": 0,
+        "analogId9": 0,
+        "analogId10": 0
+    }
+}
+
+
+------------------------------------------------------------------------------------------------
+// restoring Method not tested
+export const restoreFromGlacier = function () {
+    const params = {
+        Bucket: 'aquagenixglacier',
+        Key: './my_file.txt',
+        RestoreRequest: {
+            Days: 1,
+            GlacierJobParameters: {
+                Tier: "Expedited"
+            }
+        }
+    };
+
+    s3.restoreObject(params, function (err, data) {
+        if (err)
+            console.log(err, err.stack);  // error
+        else
+            console.log(chalk.green("File restored successfully!"));
+    });
+};
+--------------------------------------------------------------------------------
+
